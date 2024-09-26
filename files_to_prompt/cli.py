@@ -202,3 +202,7 @@ def cli(
     writer(f"Total length: {total_length}")
     if fp:
         fp.close()
+
+
+if __name__ == "__main__":
+    cli()

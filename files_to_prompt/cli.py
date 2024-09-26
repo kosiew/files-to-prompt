@@ -91,12 +91,34 @@ def process_path(
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
+    include_images,
     writer,
     claude_xml,
     root_path,
 ):
+    # Default patterns to ignore image files
+    image_patterns = [
+        "*.jpg",
+        "*.jpeg",
+        "*.png",
+        "*.gif",
+        "*.bmp",
+        "*.svg",
+        "*.tif",
+        "*.tiff",
+    ]
+
+    if not include_images:
+        # Add image patterns to ignore_patterns if include_images is False
+        ignore_patterns = list(ignore_patterns) + image_patterns
+
     if os.path.isfile(path):
         if is_text_file(path):
+            # Check if the file matches any ignore patterns
+            if any(
+                fnmatch(os.path.basename(path), pattern) for pattern in ignore_patterns
+            ):
+                return
             try:
                 with open(path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read()
@@ -221,6 +243,11 @@ def print_directory_structure(dir_lengths, writer, root_paths):
     is_flag=True,
     help="Print the directory structure and the length in each directory",
 )
+@click.option(
+    "--include-images",
+    is_flag=True,
+    help="Include image files (jpg, jpeg, png, gif, bmp, svg, tif, tiff)",
+)
 @click.version_option()
 def cli(
     paths,
@@ -230,6 +257,7 @@ def cli(
     output_file,
     claude_xml,
     print_dir_structure,
+    include_images,
 ):
     # Reset global variables
     global global_index, total_length, dir_lengths
@@ -262,6 +290,7 @@ def cli(
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
+            include_images,
             writer,
             claude_xml,
             root_path=path,

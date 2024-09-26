@@ -313,7 +313,7 @@ def cli(
     output_file,
     claude_xml,
     print_dir_structure,
-    include_binary,  # New option
+    include_binary,
 ):
     # Reset global variables
     global global_index, total_length, dir_lengths
@@ -356,7 +356,7 @@ def cli(
     if print_dir_structure:
         writer("Directory structure and lengths:")
         print_directory_structure(dir_lengths, writer, root_paths)
-        writer(f"Total length: {total_length}")
+        writer(f"Total length: {total_length:,}")
     if fp:
         fp.close()
 

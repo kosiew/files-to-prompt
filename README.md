@@ -42,11 +42,28 @@ This will output the contents of every file, with each file preceded by its rela
   ```
 
 - `--ignore <pattern>`: Specify one or more patterns to ignore. Can be used multiple times.
+
   ```bash
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
-- `c/--cxml`: Output in Claude XML format.
+- `--include-binary`: Include binary files and files with ignored extensions.
+
+  By default, `files-to-prompt` skips binary files and files with certain extensions (e.g., images, audio, video files). Use this option to include them.
+
+  ```bash
+  files-to-prompt path/to/directory --include-binary
+  ```
+
+- `--print-dir-structure`: Print the directory structure and the length of contents in each directory.
+
+  This option prints a summary of the directory structure and the cumulative length of the contents within each directory and subdirectory.
+
+  ```bash
+  files-to-prompt path/to/directory --print-dir-structure
+  ```
+
+- `-c/--cxml`: Output in Claude XML format.
 
   ```bash
   files-to-prompt path/to/directory --cxml
@@ -68,6 +85,7 @@ my_directory/
 ├── file2.txt
 ├── .hidden_file.txt
 ├── temp.log
+├── binary_file.bin
 └── subdirectory/
     └── file3.txt
 ```
@@ -82,6 +100,33 @@ Contents of file1.txt
 my_directory/file2.txt
 ---
 Contents of file2.txt
+---
+my_directory/subdirectory/file3.txt
+---
+Contents of file3.txt
+---
+```
+
+Binary files and files with ignored extensions (like `binary_file.bin` and `temp.log`) are skipped by default.
+
+If you run `files-to-prompt my_directory --include-binary`, the output will also include `binary_file.bin` and `temp.log`:
+
+```
+my_directory/file1.txt
+---
+Contents of file1.txt
+---
+my_directory/file2.txt
+---
+Contents of file2.txt
+---
+my_directory/temp.log
+---
+Contents of temp.log
+---
+my_directory/binary_file.bin
+---
+Contents of binary_file.bin
 ---
 my_directory/subdirectory/file3.txt
 ---
@@ -115,6 +160,29 @@ my_directory/subdirectory/file3.txt
 Contents of file3.txt
 ---
 ```
+
+If you run `files-to-prompt my_directory --print-dir-structure`, the directory structure and content lengths will be printed at the end:
+
+```
+my_directory/file1.txt
+---
+Contents of file1.txt
+---
+my_directory/file2.txt
+---
+Contents of file2.txt
+---
+my_directory/subdirectory/file3.txt
+---
+Contents of file3.txt
+---
+Directory structure and lengths:
+my_directory/ (length: 42)
+    subdirectory/ (length: 14)
+Total length: 56
+```
+
+*Note:* The lengths are the cumulative sizes (in characters) of the contents within each directory.
 
 ### Claude XML Output
 

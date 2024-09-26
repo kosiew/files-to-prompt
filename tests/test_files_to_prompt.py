@@ -1,6 +1,7 @@
 import os
-import pytest
+from sys import stderr
 
+import pytest
 from click.testing import CliRunner
 
 from files_to_prompt.cli import cli
@@ -165,6 +166,72 @@ def test_mixed_paths_with_options(tmpdir):
         assert "test_dir/.hidden_included.txt" in result.output
         assert "single_file.txt" in result.output
         assert "Contents of single file" in result.output
+
+
+def test_include_binary(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        # Create a binary file
+        with open("test_dir/binary_file.bin", "wb") as f:
+            f.write(b"\x00\xFF\x00\xFF")
+        # Create a text file
+        with open("test_dir/text_file.txt", "w") as f:
+            f.write("This is a text file")
+
+        # Run without --include-binary; binary files should be skipped
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        stdout = result.stdout
+        stderr = result.stderr
+        assert "test_dir/text_file.txt" in stdout
+        assert "This is a text file" in stdout
+        assert "test_dir/binary_file.bin" not in stdout
+        assert (
+            "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
+            in stderr
+        )
+
+        # Run with --include-binary; binary files should be included
+        result = runner.invoke(cli, ["test_dir", "--include-binary"])
+        stdout = result.stdout
+        stderr = result.stderr
+        assert stderr == ""
+        assert "test_dir/text_file.txt" in stdout
+        assert "This is a text file" in stdout
+        assert "test_dir/binary_file.bin" in stdout
+        # Contents of binary file may not be printable, so we don't check them
+        # Also, there should be no warning about skipping the binary file
+        assert "Warning: Skipping non-text file test_dir/binary_file.bin" not in stderr
+        assert result.exit_code == 0
+
+
+def test_print_dir_structure(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        # Create directory structure
+        os.makedirs("test_dir/subdir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("file1 content")  # 14 characters including the space
+        with open("test_dir/subdir/file2.txt", "w") as f:
+            f.write("file2 content in subdir")  # 23 characters including spaces
+
+        # Run without --print-dir-structure
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "Directory structure and lengths:" not in result.output
+
+        # Run with --print-dir-structure
+        result = runner.invoke(cli, ["test_dir", "--print-dir-structure"])
+        output = result.output
+        stderr = result.stderr
+
+        assert stderr == ""
+        assert "Directory structure and lengths:" in output
+        assert "test_dir/ (length: 14)" in output
+        assert "subdir/ (length: 23)" in output
+        assert "Total length: 37" in output
+        assert result.exit_code == 0
 
 
 def test_binary_file_warning(tmpdir):

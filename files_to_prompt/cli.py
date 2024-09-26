@@ -94,7 +94,7 @@ def process_path(
     writer,
     claude_xml,
     root_path,
-    include_binary,  # New parameter
+    include_binary,
 ):
     # Default patterns to ignore image and PDF files
     default_ignore_patterns = [
@@ -305,7 +305,7 @@ def print_directory_structure(dir_lengths, writer, root_paths):
     help="Include binary files and files with ignored extensions",
 )
 @click.version_option()
-def cli(
+def clii(
     paths,
     include_hidden,
     ignore_gitignore,

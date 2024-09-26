@@ -5,6 +5,7 @@ import click
 
 global_index = 1
 total_length = 0
+dir_lengths = {}  # Dictionary to keep track of directory lengths
 
 
 def should_ignore(path, gitignore_rules):
@@ -24,6 +25,23 @@ def read_gitignore(path):
                 line.strip() for line in f if line.strip() and not line.startswith("#")
             ]
     return []
+
+
+def is_text_file(file_path):
+    # Try to read the first 1024 bytes and decode them
+    try:
+        with open(file_path, "rb") as file:
+            chunk = file.read(1024)
+            if b"\0" in chunk:
+                return False  # Likely a binary file
+            # Attempt to decode the chunk using utf-8
+            try:
+                chunk.decode("utf-8")
+                return True
+            except UnicodeDecodeError:
+                return False
+    except Exception as e:
+        return False
 
 
 def print_path(writer, path, content, xml):
@@ -55,6 +73,18 @@ def print_as_xml(writer, path, content):
     global_index += 1
 
 
+def update_dir_length(file_path, length, root_path):
+    dir_path = os.path.dirname(file_path)
+    while True:
+        dir_lengths[dir_path] = dir_lengths.get(dir_path, 0) + length
+        if dir_path == root_path:
+            break
+        parent_dir = os.path.dirname(dir_path)
+        if parent_dir == dir_path or not parent_dir:
+            break
+        dir_path = parent_dir
+
+
 def process_path(
     path,
     include_hidden,
@@ -63,14 +93,22 @@ def process_path(
     ignore_patterns,
     writer,
     claude_xml,
+    root_path,
 ):
     if os.path.isfile(path):
-        try:
-            with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml)
-        except UnicodeDecodeError:
-            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
-            click.echo(click.style(warning_message, fg="red"), err=True)
+        if is_text_file(path):
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+                # Only print the path and content after successful read
+                print_path(writer, path, content, claude_xml)
+                update_dir_length(path, len(content), root_path)
+            except Exception as e:
+                warning_message = f"Warning: Skipping file {path} due to an error."
+                click.echo(click.style(warning_message, fg="red"), err=True)
+        else:
+            warning_message = f"Warning: Skipping non-text file {path}"
+            click.echo(click.style(warning_message, fg="yellow"), err=True)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -99,14 +137,50 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "r") as f:
-                        print_path(writer, file_path, f.read(), claude_xml)
-                except UnicodeDecodeError:
-                    warning_message = (
-                        f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
-                    )
-                    click.echo(click.style(warning_message, fg="red"), err=True)
+                if is_text_file(file_path):
+                    try:
+                        with open(
+                            file_path, "r", encoding="utf-8", errors="replace"
+                        ) as f:
+                            content = f.read()
+                        # Only print the path and content after successful read
+                        print_path(writer, file_path, content, claude_xml)
+                        update_dir_length(file_path, len(content), root_path)
+                    except Exception as e:
+                        warning_message = (
+                            f"Warning: Skipping file {file_path} due to error: {e}"
+                        )
+                        click.echo(click.style(warning_message, fg="red"), err=True)
+                else:
+                    warning_message = f"Warning: Skipping non-text file {file_path}"
+                    click.echo(click.style(warning_message, fg="yellow"), err=True)
+
+
+def print_directory_structure(dir_lengths, writer, root_paths):
+    def build_tree():
+        tree = {}
+        for dir_path in dir_lengths.keys():
+            for root_path in root_paths:
+                if dir_path.startswith(root_path):
+                    rel_path = os.path.relpath(dir_path, root_path)
+                    parts = rel_path.split(os.sep)
+                    subtree = tree.setdefault(root_path, {})
+                    for part in parts:
+                        subtree = subtree.setdefault(part, {})
+                    break  # Stop after finding the first matching root_path
+        return tree
+
+    def print_tree(subtree, path="", level=0):
+        for dir_name in sorted(subtree.keys()):
+            full_path = os.path.join(path, dir_name) if path else dir_name
+            abs_path = os.path.abspath(full_path)
+            length = dir_lengths.get(abs_path, 0)
+            indent = " " * (level * 4)
+            writer(f"{indent}{dir_name}/ (length: {length})")
+            print_tree(subtree[dir_name], full_path, level + 1)
+
+    tree = build_tree()
+    print_tree(tree)
 
 
 @click.command()
@@ -142,51 +216,45 @@ def process_path(
     is_flag=True,
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
+@click.option(
+    "--print-dir-structure",
+    is_flag=True,
+    help="Print the directory structure and the length in each directory",
+)
 @click.version_option()
 def cli(
-    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths,
+    include_hidden,
+    ignore_gitignore,
+    ignore_patterns,
+    output_file,
+    claude_xml,
+    print_dir_structure,
 ):
-    """
-    Takes one or more paths to files or directories and outputs every file,
-    recursively, each one preceded with its filename like this:
-
-    path/to/file.py
-    ----
-    Contents of file.py goes here
-
-    ---
-    path/to/file2.py
-    ---
-    ...
-
-    If the `--cxml` flag is provided, the output will be structured as follows:
-
-    <documents>
-    <document path="path/to/file1.txt">
-    Contents of file1.txt
-    </document>
-
-    <document path="path/to/file2.txt">
-    Contents of file2.txt
-    </document>
-    ...
-    </documents>
-    """
-    # Reset global_index for pytest
-    global global_index
+    # Reset global variables
+    global global_index, total_length, dir_lengths
     global_index = 1
+    total_length = 0
+    dir_lengths = {}
+
     gitignore_rules = []
     writer = click.echo
     fp = None
     if output_file:
-        fp = open(output_file, "w")
+        fp = open(output_file, "w", encoding="utf-8")
         writer = lambda s: print(s, file=fp)
-    for path in paths:
+    else:
+        writer = lambda s: click.echo(s, file=None)
+
+    # Convert paths to absolute paths and store them
+    root_paths = [os.path.abspath(path) for path in paths]
+
+    for path in root_paths:
         if not os.path.exists(path):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
         if not ignore_gitignore:
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
-        if claude_xml and path == paths[0]:
+        if claude_xml and path == root_paths[0]:
             writer("<documents>")
         process_path(
             path,
@@ -196,10 +264,14 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
+            root_path=path,
         )
     if claude_xml:
         writer("</documents>")
-    writer(f"Total length: {total_length}")
+    if print_dir_structure:
+        writer("Directory structure and lengths:")
+        print_directory_structure(dir_lengths, writer, root_paths)
+        writer(f"Total length: {total_length}")
     if fp:
         fp.close()
 

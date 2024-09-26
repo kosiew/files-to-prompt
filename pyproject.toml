@@ -7,10 +7,7 @@ authors = [{ name = "Simon Willison" }]
 license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
 classifiers = ["License :: OSI Approved :: Apache Software License"]
-dependencies = [
-    "click",
-    "pytest>=8.3.3",
-]
+dependencies = ["click"]
 
 [project.urls]
 Homepage = "https://github.com/simonw/files-to-prompt"

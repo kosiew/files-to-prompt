@@ -187,7 +187,10 @@ def test_include_binary(tmpdir):
         assert "test_dir/text_file.txt" in stdout
         assert "This is a text file" in stdout
         assert "test_dir/binary_file.bin" not in stdout
-        assert "Warning: Skipping non-text file test_dir/binary_file.bin" in stderr
+        assert (
+            "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
+            in stderr
+        )
 
         # Run with --include-binary; binary files should be included
         result = runner.invoke(cli, ["test_dir", "--include-binary"])

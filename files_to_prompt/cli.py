@@ -20,7 +20,7 @@ def should_ignore(path, gitignore_rules):
 def read_gitignore(path):
     gitignore_path = os.path.join(path, ".gitignore")
     if os.path.isfile(gitignore_path):
-        with open(gitignore_path, "r") as f:
+        with open(gitignore_path, "r", encoding="utf-8") as f:
             return [
                 line.strip() for line in f if line.strip() and not line.startswith("#")
             ]
@@ -40,7 +40,7 @@ def is_text_file(file_path):
                 return True
             except UnicodeDecodeError:
                 return False
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -91,13 +91,13 @@ def process_path(
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
-    include_images,
     writer,
     claude_xml,
     root_path,
+    include_binary,  # New parameter
 ):
-    # Default patterns to ignore image files
-    image_patterns = [
+    # Default patterns to ignore image and PDF files
+    default_ignore_patterns = [
         "*.jpg",
         "*.jpeg",
         "*.png",
@@ -106,11 +106,21 @@ def process_path(
         "*.svg",
         "*.tif",
         "*.tiff",
+        "*.pdf",
+        "*.ico",
+        "*.icns",
+        "*.webp",
+        "*.mp3",
+        "*.wav",
+        "*.ogg",
+        "*.mp4",
+        "*.avi",
+        "*.mov",
     ]
 
-    if not include_images:
-        # Add image patterns to ignore_patterns if include_images is False
-        ignore_patterns = list(ignore_patterns) + image_patterns
+    # Apply default ignore patterns unless include_binary is True
+    if not include_binary:
+        ignore_patterns = list(ignore_patterns) + default_ignore_patterns
 
     if os.path.isfile(path):
         if is_text_file(path):
@@ -126,11 +136,31 @@ def process_path(
                 print_path(writer, path, content, claude_xml)
                 update_dir_length(path, len(content), root_path)
             except Exception as e:
-                warning_message = f"Warning: Skipping file {path} due to an error."
+                warning_message = f"Warning: Skipping file {path} due to an error: {e}"
                 click.echo(click.style(warning_message, fg="red"), err=True)
         else:
-            warning_message = f"Warning: Skipping non-text file {path}"
-            click.echo(click.style(warning_message, fg="yellow"), err=True)
+            # Check if we should include binary files
+            if include_binary:
+                # Check if the file matches any ignore patterns
+                if any(
+                    fnmatch(os.path.basename(path), pattern)
+                    for pattern in ignore_patterns
+                ):
+                    return
+                # Attempt to read binary file content as text
+                try:
+                    with open(path, "r", encoding="utf-8", errors="replace") as f:
+                        content = f.read()
+                    print_path(writer, path, content, claude_xml)
+                    update_dir_length(path, len(content), root_path)
+                except Exception as e:
+                    warning_message = (
+                        f"Warning: Skipping binary file {path} due to an error: {e}"
+                    )
+                    click.echo(click.style(warning_message, fg="red"), err=True)
+            else:
+                warning_message = f"Warning: Skipping non-text file {path}"
+                click.echo(click.style(warning_message, fg="yellow"), err=True)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -160,6 +190,12 @@ def process_path(
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 if is_text_file(file_path):
+                    # Check if the file matches any ignore patterns
+                    if any(
+                        fnmatch(os.path.basename(file_path), pattern)
+                        for pattern in ignore_patterns
+                    ):
+                        continue
                     try:
                         with open(
                             file_path, "r", encoding="utf-8", errors="replace"
@@ -174,8 +210,27 @@ def process_path(
                         )
                         click.echo(click.style(warning_message, fg="red"), err=True)
                 else:
-                    warning_message = f"Warning: Skipping non-text file {file_path}"
-                    click.echo(click.style(warning_message, fg="yellow"), err=True)
+                    # Check if we should include binary files
+                    if include_binary:
+                        # Check if the file matches any ignore patterns
+                        if any(
+                            fnmatch(os.path.basename(file_path), pattern)
+                            for pattern in ignore_patterns
+                        ):
+                            continue
+                        try:
+                            with open(
+                                file_path, "r", encoding="utf-8", errors="replace"
+                            ) as f:
+                                content = f.read()
+                            print_path(writer, file_path, content, claude_xml)
+                            update_dir_length(file_path, len(content), root_path)
+                        except Exception as e:
+                            warning_message = f"Warning: Skipping binary file {file_path} due to error: {e}"
+                            click.echo(click.style(warning_message, fg="red"), err=True)
+                    else:
+                        warning_message = f"Warning: Skipping non-text file {file_path}"
+                        click.echo(click.style(warning_message, fg="yellow"), err=True)
 
 
 def print_directory_structure(dir_lengths, writer, root_paths):
@@ -244,9 +299,9 @@ def print_directory_structure(dir_lengths, writer, root_paths):
     help="Print the directory structure and the length in each directory",
 )
 @click.option(
-    "--include-images",
+    "--include-binary",
     is_flag=True,
-    help="Include image files (jpg, jpeg, png, gif, bmp, svg, tif, tiff)",
+    help="Include binary files and files with ignored extensions",
 )
 @click.version_option()
 def cli(
@@ -257,7 +312,7 @@ def cli(
     output_file,
     claude_xml,
     print_dir_structure,
-    include_images,
+    include_binary,  # New option
 ):
     # Reset global variables
     global global_index, total_length, dir_lengths
@@ -290,10 +345,10 @@ def cli(
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
-            include_images,
             writer,
             claude_xml,
             root_path=path,
+            include_binary=include_binary,  # Pass the new parameter
         )
     if claude_xml:
         writer("</documents>")

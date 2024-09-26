@@ -253,7 +253,8 @@ def print_directory_structure(dir_lengths, writer, root_paths):
             abs_path = os.path.abspath(full_path)
             length = dir_lengths.get(abs_path, 0)
             indent = " " * (level * 4)
-            writer(f"{indent}{dir_name}/ (length: {length})")
+            writer(f"{indent}{dir_name}/ (length: {length:,})")
+
             print_tree(subtree[dir_name], full_path, level + 1)
 
     tree = build_tree()

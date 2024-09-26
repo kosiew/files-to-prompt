@@ -123,6 +123,7 @@ def process_path(
         ignore_patterns = list(ignore_patterns) + default_ignore_patterns
 
     if os.path.isfile(path):
+        relative_path = os.path.relpath(path, start=root_path)
         if is_text_file(path):
             # Check if the file matches any ignore patterns
             if any(
@@ -133,7 +134,7 @@ def process_path(
                 with open(path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read()
                 # Only print the path and content after successful read
-                print_path(writer, path, content, claude_xml)
+                print_path(writer, relative_path, content, claude_xml)
                 update_dir_length(path, len(content), root_path)
             except Exception as e:
                 warning_message = f"Warning: Skipping file {path} due to an error: {e}"
@@ -151,7 +152,7 @@ def process_path(
                 try:
                     with open(path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
-                    print_path(writer, path, content, claude_xml)
+                    print_path(writer, relative_path, content, claude_xml)
                     update_dir_length(path, len(content), root_path)
                 except Exception as e:
                     warning_message = (
@@ -189,6 +190,7 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
+                relative_file_path = os.path.relpath(file_path, start=root_path)
                 if is_text_file(file_path):
                     # Check if the file matches any ignore patterns
                     if any(
@@ -202,7 +204,7 @@ def process_path(
                         ) as f:
                             content = f.read()
                         # Only print the path and content after successful read
-                        print_path(writer, file_path, content, claude_xml)
+                        print_path(writer, relative_file_path, content, claude_xml)
                         update_dir_length(file_path, len(content), root_path)
                     except Exception as e:
                         warning_message = (
@@ -223,7 +225,7 @@ def process_path(
                                 file_path, "r", encoding="utf-8", errors="replace"
                             ) as f:
                                 content = f.read()
-                            print_path(writer, file_path, content, claude_xml)
+                            print_path(writer, relative_file_path, content, claude_xml)
                             update_dir_length(file_path, len(content), root_path)
                         except Exception as e:
                             warning_message = f"Warning: Skipping binary file {file_path} due to error: {e}"
@@ -305,7 +307,7 @@ def print_directory_structure(dir_lengths, writer, root_paths):
     help="Include binary files and files with ignored extensions",
 )
 @click.version_option()
-def clii(
+def cli(
     paths,
     include_hidden,
     ignore_gitignore,
@@ -359,7 +361,3 @@ def clii(
         writer(f"Total length: {total_length:,}")
     if fp:
         fp.close()
-
-
-if __name__ == "__main__":
-    cli()

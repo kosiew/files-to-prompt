@@ -4,6 +4,7 @@ from fnmatch import fnmatch
 import click
 
 global_index = 1
+total_length = 0
 
 
 def should_ignore(path, gitignore_rules):
@@ -33,21 +34,24 @@ def print_path(writer, path, content, xml):
 
 
 def print_default(writer, path, content):
+    global total_length
     writer(path)
     writer("---")
     writer(content)
     writer("")
     writer("---")
+    total_length += len(content)
 
 
 def print_as_xml(writer, path, content):
-    global global_index
+    global global_index, total_length
     writer(f'<document index="{global_index}">')
     writer(f"<source>{path}</source>")
     writer("<document_content>")
     writer(content)
     writer("</document_content>")
     writer("</document>")
+    total_length += len(content)
     global_index += 1
 
 
@@ -195,5 +199,6 @@ def cli(
         )
     if claude_xml:
         writer("</documents>")
+    writer(f"Total length: {total_length}")
     if fp:
         fp.close()

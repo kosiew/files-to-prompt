@@ -350,8 +350,8 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
-            root_path=path,
-            include_binary=include_binary,  # Pass the new parameter
+            root_path=path if os.path.isdir(path) else os.path.dirname(path),
+            include_binary=include_binary,
         )
     if claude_xml:
         writer("</documents>")

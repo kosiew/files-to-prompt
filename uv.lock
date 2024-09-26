@@ -37,6 +37,7 @@ version = "0.3"
 source = { virtual = "." }
 dependencies = [
     { name = "click" },
+    { name = "pytest" },
 ]
 
 [package.optional-dependencies]
@@ -47,6 +48,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "click" },
+    { name = "pytest", specifier = ">=8.3.3" },
     { name = "pytest", marker = "extra == 'test'" },
 ]
 

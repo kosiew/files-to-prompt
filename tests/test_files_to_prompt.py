@@ -7,7 +7,7 @@ from click.testing import CliRunner
 from files_to_prompt.cli import cli
 
 
-def remove_tmpdir_prefix(output, tmpdir):
+def remove_tmpdir(output, tmpdir):
     return output.replace(str(tmpdir), "")
 
 
@@ -188,7 +188,7 @@ def test_include_binary(tmpdir):
         assert result.exit_code == 0
         stdout = result.stdout
         stderr = result.stderr
-        stderr = remove_tmpdir_prefix(stderr, tmpdir)
+        stderr = remove_tmpdir(stderr, tmpdir)
         assert "test_dir/text_file.txt" in stdout
         assert "This is a text file" in stdout
         assert "test_dir/binary_file.bin" not in stdout
@@ -227,7 +227,7 @@ def test_print_dir_structure(tmpdir):
         result = runner.invoke(cli, ["test_dir", "--print-dir-structure"])
         output = result.output
         # replace tmpdir with "" to make the test more robust
-        output = remove_tmpdir_prefix(output, tmpdir)
+        output = remove_tmpdir(output, tmpdir)
 
         assert "Directory structure and lengths:" in output
         assert "/subdir (length: 23)" in output
@@ -252,7 +252,7 @@ def test_binary_file_warning(tmpdir):
         stderr = result.stderr
 
         # replace tmpdir with "" to make the test more robust
-        stderr = remove_tmpdir_prefix(stderr, tmpdir)
+        stderr = remove_tmpdir(stderr, tmpdir)
 
         assert "test_dir/text_file.txt" in stdout
         assert "This is a text file" in stdout
@@ -274,7 +274,7 @@ def test_xml_format_dir(tmpdir, args):
         result = runner.invoke(cli, args + ["--cxml"])
         assert result.exit_code == 0
         actual = result.output
-        actual = remove_tmpdir_prefix(actual, tmpdir)
+        actual = remove_tmpdir(actual, tmpdir)
         expected = f"""
 <documents>
 <document index="1">
@@ -311,7 +311,7 @@ def test_output_option(tmpdir, arg):
         assert not result.output
         with open(output_file, "r") as f:
             actual = f.read()
-            actual = remove_tmpdir_prefix(actual, tmpdir)
+            actual = remove_tmpdir(actual, tmpdir)
             expected = f"""
 /test_dir/file1.txt
 ---

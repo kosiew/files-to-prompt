@@ -251,11 +251,12 @@ def print_directory_structure(dir_lengths, writer, root_paths):
         for dir_name in sorted(subtree.keys()):
             full_path = os.path.join(path, dir_name) if path else dir_name
             abs_path = os.path.abspath(full_path)
-            length = dir_lengths.get(abs_path, 0)
-            indent = " " * (level * 4)
-            writer(f"{indent}{dir_name}/ (length: {length:,})")
+            length = dir_lengths.get(abs_path, -1)
+            if length > -1:
+                indent = " " * (level * 4)
+                writer(f"{indent}{dir_name}/ (length: {length:,})")
 
-            print_tree(subtree[dir_name], full_path, level + 1)
+                print_tree(subtree[dir_name], full_path, level + 1)
 
     tree = build_tree()
     print_tree(tree)

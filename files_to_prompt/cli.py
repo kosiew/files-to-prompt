@@ -1,5 +1,6 @@
 import os
 from fnmatch import fnmatch
+from operator import is_
 
 import click
 
@@ -75,6 +76,8 @@ def print_as_xml(writer, path, content):
 
 def update_dir_length(file_path, length, root_path):
     dir_path = os.path.dirname(file_path)
+    files_place_holder = f"{dir_path}/..files.."
+    dir_lengths[files_place_holder] = dir_lengths.get(files_place_holder, 0) + length
     while True:
         dir_lengths[dir_path] = dir_lengths.get(dir_path, 0) + length
         if dir_path == root_path:
@@ -195,13 +198,18 @@ def print_directory_structure(dir_lengths, writer, root_paths):
         return tree
 
     def print_tree(subtree, path="", level=0):
-        for dir_name in sorted(subtree.keys()):
+        sorted_keys = sorted(subtree.keys(), key=lambda k: (k.startswith(".."), k))
+        for dir_name in sorted_keys:
+            if dir_name == ".":
+                continue
             full_path = os.path.join(path, dir_name) if path else dir_name
             abs_path = os.path.abspath(full_path)
             length = dir_lengths.get(abs_path, -1)
+            is_directory = os.path.isdir(abs_path)
             if length > -1:
                 indent = " " * (level * 4)
-                writer(f"{indent}{dir_name}/ (length: {length:,})")
+                prefix = "/" if is_directory else ""
+                writer(f"{indent}{prefix}{dir_name} (length: {length:,})")
 
                 print_tree(subtree[dir_name], full_path, level + 1)
 

@@ -308,13 +308,13 @@ def test_output_option(tmpdir, arg):
         assert not result.output
         with open(output_file, "r") as f:
             actual = f.read()
-        expected = """
-test_dir/file1.txt
+        expected = f"""
+{tmpdir}/test_dir/file1.txt
 ---
 Contents of file1.txt
 
 ---
-test_dir/file2.txt
+{tmpdir}/test_dir/file2.txt
 ---
 Contents of file2.txt
 

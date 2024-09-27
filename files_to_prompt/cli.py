@@ -132,9 +132,9 @@ def process_path(
             try:
                 with open(path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read()
-                # Only print the path and content after successful read
-                print_path(writer, path, content, claude_xml)
-                update_dir_length(path, len(content), root_path)
+                    # Only print the path and content after successful read
+                    print_path(writer, path, content, claude_xml)
+                    update_dir_length(path, len(content), root_path)
             except Exception as e:
                 warning_message = f"Warning: Skipping file {path} due to an error: {e}"
                 click.echo(click.style(warning_message, fg="red"), err=True)
@@ -151,8 +151,8 @@ def process_path(
                 try:
                     with open(path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
-                    print_path(writer, path, content, claude_xml)
-                    update_dir_length(path, len(content), root_path)
+                        print_path(writer, path, content, claude_xml)
+                        update_dir_length(path, len(content), root_path)
                 except Exception as e:
                     warning_message = (
                         f"Warning: Skipping binary file {path} due to an error: {e}"
@@ -201,9 +201,9 @@ def process_path(
                             file_path, "r", encoding="utf-8", errors="replace"
                         ) as f:
                             content = f.read()
-                        # Only print the path and content after successful read
-                        print_path(writer, file_path, content, claude_xml)
-                        update_dir_length(file_path, len(content), root_path)
+                            # Only print the path and content after successful read
+                            print_path(writer, file_path, content, claude_xml)
+                            update_dir_length(file_path, len(content), root_path)
                     except Exception as e:
                         warning_message = (
                             f"Warning: Skipping file {file_path} due to error: {e}"
@@ -223,8 +223,8 @@ def process_path(
                                 file_path, "r", encoding="utf-8", errors="replace"
                             ) as f:
                                 content = f.read()
-                            print_path(writer, file_path, content, claude_xml)
-                            update_dir_length(file_path, len(content), root_path)
+                                print_path(writer, file_path, content, claude_xml)
+                                update_dir_length(file_path, len(content), root_path)
                         except Exception as e:
                             warning_message = f"Warning: Skipping binary file {file_path} due to error: {e}"
                             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -350,7 +350,7 @@ def cli(
             writer,
             claude_xml,
             root_path=path,
-            include_binary=include_binary,  # Pass the new parameter
+            include_binary=include_binary,
         )
     if claude_xml:
         writer("</documents>")

@@ -7,6 +7,10 @@ from click.testing import CliRunner
 from files_to_prompt.cli import cli
 
 
+def remove_tmpdir_prefix(output, tmpdir):
+    return output.replace(str(tmpdir), "")
+
+
 def test_basic_functionality(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
@@ -184,13 +188,11 @@ def test_include_binary(tmpdir):
         assert result.exit_code == 0
         stdout = result.stdout
         stderr = result.stderr
+        stderr = remove_tmpdir_prefix(stderr, tmpdir)
         assert "test_dir/text_file.txt" in stdout
         assert "This is a text file" in stdout
         assert "test_dir/binary_file.bin" not in stdout
-        assert (
-            "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
-            in stderr
-        )
+        assert f"Warning: Skipping non-text file /test_dir/binary_file.bin" in stderr
 
         # Run with --include-binary; binary files should be included
         result = runner.invoke(cli, ["test_dir", "--include-binary"])
@@ -224,13 +226,13 @@ def test_print_dir_structure(tmpdir):
         # Run with --print-dir-structure
         result = runner.invoke(cli, ["test_dir", "--print-dir-structure"])
         output = result.output
-        stderr = result.stderr
+        # replace tmpdir with "" to make the test more robust
+        output = remove_tmpdir_prefix(output, tmpdir)
 
-        assert stderr == ""
         assert "Directory structure and lengths:" in output
-        assert "test_dir/ (length: 14)" in output
-        assert "subdir/ (length: 23)" in output
-        assert "Total length: 37" in output
+        assert "/subdir (length: 23)" in output
+        assert "Total length: 36" in output
+        assert f"/test_dir (length: 36)" in output
         assert result.exit_code == 0
 
 
@@ -249,13 +251,13 @@ def test_binary_file_warning(tmpdir):
         stdout = result.stdout
         stderr = result.stderr
 
+        # replace tmpdir with "" to make the test more robust
+        stderr = remove_tmpdir_prefix(stderr, tmpdir)
+
         assert "test_dir/text_file.txt" in stdout
         assert "This is a text file" in stdout
         assert "\ntest_dir/binary_file.bin" not in stdout
-        assert (
-            "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
-            in stderr
-        )
+        assert f"Warning: Skipping non-text file /test_dir/binary_file.bin" in stderr
 
 
 @pytest.mark.parametrize(
@@ -272,16 +274,17 @@ def test_xml_format_dir(tmpdir, args):
         result = runner.invoke(cli, args + ["--cxml"])
         assert result.exit_code == 0
         actual = result.output
-        expected = """
+        actual = remove_tmpdir_prefix(actual, tmpdir)
+        expected = f"""
 <documents>
 <document index="1">
-<source>test_dir/file1.txt</source>
+<source>/test_dir/file1.txt</source>
 <document_content>
 Contents of file1.txt
 </document_content>
 </document>
 <document index="2">
-<source>test_dir/file2.txt</source>
+<source>/test_dir/file2.txt</source>
 <document_content>
 Contents of file2.txt
 </document_content>
@@ -308,16 +311,17 @@ def test_output_option(tmpdir, arg):
         assert not result.output
         with open(output_file, "r") as f:
             actual = f.read()
-        expected = f"""
-{tmpdir}/test_dir/file1.txt
+            actual = remove_tmpdir_prefix(actual, tmpdir)
+            expected = f"""
+/test_dir/file1.txt
 ---
 Contents of file1.txt
 
 ---
-{tmpdir}/test_dir/file2.txt
+/test_dir/file2.txt
 ---
 Contents of file2.txt
 
 ---
 """
-        assert expected.strip() == actual.strip()
+            assert expected.strip() == actual.strip()

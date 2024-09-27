@@ -85,6 +85,21 @@ def update_dir_length(file_path, length, root_path):
         dir_path = parent_dir
 
 
+def process_file(file_path, writer, claude_xml, root_path, ignore_patterns):
+    if any(
+        fnmatch(os.path.basename(file_path), pattern) for pattern in ignore_patterns
+    ):
+        return
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+            print_path(writer, file_path, content, claude_xml)
+            update_dir_length(file_path, len(content), root_path)
+    except Exception as e:
+        warning_message = f"Warning: Skipping file {file_path} due to an error: {e}"
+        click.echo(click.style(warning_message, fg="red"), err=True)
+
+
 def process_path(
     path,
     include_hidden,
@@ -123,44 +138,11 @@ def process_path(
         ignore_patterns = list(ignore_patterns) + default_ignore_patterns
 
     if os.path.isfile(path):
-        if is_text_file(path):
-            # Check if the file matches any ignore patterns
-            if any(
-                fnmatch(os.path.basename(path), pattern) for pattern in ignore_patterns
-            ):
-                return
-            try:
-                with open(path, "r", encoding="utf-8", errors="replace") as f:
-                    content = f.read()
-                    # Only print the path and content after successful read
-                    print_path(writer, path, content, claude_xml)
-                    update_dir_length(path, len(content), root_path)
-            except Exception as e:
-                warning_message = f"Warning: Skipping file {path} due to an error: {e}"
-                click.echo(click.style(warning_message, fg="red"), err=True)
+        if is_text_file(path) or include_binary:
+            process_file(path, writer, claude_xml, root_path, ignore_patterns)
         else:
-            # Check if we should include binary files
-            if include_binary:
-                # Check if the file matches any ignore patterns
-                if any(
-                    fnmatch(os.path.basename(path), pattern)
-                    for pattern in ignore_patterns
-                ):
-                    return
-                # Attempt to read binary file content as text
-                try:
-                    with open(path, "r", encoding="utf-8", errors="replace") as f:
-                        content = f.read()
-                        print_path(writer, path, content, claude_xml)
-                        update_dir_length(path, len(content), root_path)
-                except Exception as e:
-                    warning_message = (
-                        f"Warning: Skipping binary file {path} due to an error: {e}"
-                    )
-                    click.echo(click.style(warning_message, fg="red"), err=True)
-            else:
-                warning_message = f"Warning: Skipping non-text file {path}"
-                click.echo(click.style(warning_message, fg="yellow"), err=True)
+            warning_message = f"Warning: Skipping non-text file {path}"
+            click.echo(click.style(warning_message, fg="yellow"), err=True)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -189,48 +171,13 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
-                if is_text_file(file_path):
-                    # Check if the file matches any ignore patterns
-                    if any(
-                        fnmatch(os.path.basename(file_path), pattern)
-                        for pattern in ignore_patterns
-                    ):
-                        continue
-                    try:
-                        with open(
-                            file_path, "r", encoding="utf-8", errors="replace"
-                        ) as f:
-                            content = f.read()
-                            # Only print the path and content after successful read
-                            print_path(writer, file_path, content, claude_xml)
-                            update_dir_length(file_path, len(content), root_path)
-                    except Exception as e:
-                        warning_message = (
-                            f"Warning: Skipping file {file_path} due to error: {e}"
-                        )
-                        click.echo(click.style(warning_message, fg="red"), err=True)
+                if is_text_file(file_path) or include_binary:
+                    process_file(
+                        file_path, writer, claude_xml, root_path, ignore_patterns
+                    )
                 else:
-                    # Check if we should include binary files
-                    if include_binary:
-                        # Check if the file matches any ignore patterns
-                        if any(
-                            fnmatch(os.path.basename(file_path), pattern)
-                            for pattern in ignore_patterns
-                        ):
-                            continue
-                        try:
-                            with open(
-                                file_path, "r", encoding="utf-8", errors="replace"
-                            ) as f:
-                                content = f.read()
-                                print_path(writer, file_path, content, claude_xml)
-                                update_dir_length(file_path, len(content), root_path)
-                        except Exception as e:
-                            warning_message = f"Warning: Skipping binary file {file_path} due to error: {e}"
-                            click.echo(click.style(warning_message, fg="red"), err=True)
-                    else:
-                        warning_message = f"Warning: Skipping non-text file {file_path}"
-                        click.echo(click.style(warning_message, fg="yellow"), err=True)
+                    warning_message = f"Warning: Skipping non-text file {file_path}"
+                    click.echo(click.style(warning_message, fg="yellow"), err=True)
 
 
 def print_directory_structure(dir_lengths, writer, root_paths):

@@ -9,6 +9,16 @@ total_length = 0
 dir_lengths = {}  # Dictionary to keep track of directory lengths
 
 
+def should_ignore_folder(path, patterns):
+    for pattern in patterns:
+        if pattern.endswith("/*"):
+            if pattern[:-2] in path:
+                return True
+        elif pattern in path:
+            return True
+    return False
+
+
 def should_ignore(path, gitignore_rules):
     for rule in gitignore_rules:
         if fnmatch(os.path.basename(path), rule):
@@ -175,10 +185,15 @@ def process_path(
                 ]
 
             if ignore_patterns:
+                dirs[:] = [
+                    d
+                    for d in dirs
+                    if not should_ignore_folder(os.path.join(root, d), ignore_patterns)
+                ]
                 files = [
                     f
                     for f in files
-                    if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
+                    if not should_ignore_folder(os.path.join(root, f), ignore_patterns)
                 ]
 
             for file in sorted(files):

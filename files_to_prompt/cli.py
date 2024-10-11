@@ -11,10 +11,8 @@ dir_lengths = {}  # Dictionary to keep track of directory lengths
 
 def should_ignore_folder(path, patterns):
     for pattern in patterns:
-        if pattern.endswith("/*"):
-            if pattern[:-2] in path:
-                return True
-        elif pattern in path:
+        base_pattern = pattern.rstrip("/*")
+        if base_pattern and base_pattern in path:
             return True
     return False
 

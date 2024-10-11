@@ -113,7 +113,10 @@ def process_path(
     claude_xml,
     root_path,
     include_binary,
+    display_warnings,
 ):
+    warnings = []
+
     # Default patterns to ignore image and PDF files
     default_ignore_patterns = [
         "*.jpg",
@@ -145,7 +148,10 @@ def process_path(
             process_file(path, writer, claude_xml, root_path, ignore_patterns)
         else:
             warning_message = f"Warning: Skipping non-text file {path}"
-            click.echo(click.style(warning_message, fg="yellow"), err=True)
+            if display_warnings:
+                click.echo(click.style(warning_message, fg="yellow"), err=True)
+            else:
+                warnings.append(warning_message)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -184,7 +190,15 @@ def process_path(
                     claude_xml,
                     root_path,
                     include_binary,
+                    display_warnings,
                 )
+
+    if not display_warnings and warnings:
+        click.echo(
+            click.style(f"Suppressed {len(warnings)} warnings:", fg="yellow"), err=True
+        )
+        for warning in warnings:
+            click.echo(click.style(warning, fg="yellow"), err=True)
 
 
 def print_directory_structure(dir_lengths, writer, root_paths):
@@ -260,6 +274,11 @@ def print_directory_structure(dir_lengths, writer, root_paths):
     help="Print the directory structure and the length in each directory",
 )
 @click.option(
+    "--display-warning",
+    is_flag=True,
+    help="display warnings",
+)
+@click.option(
     "--include-binary",
     is_flag=True,
     help="Include binary files and files with ignored extensions",
@@ -274,6 +293,7 @@ def cli(
     claude_xml,
     print_dir_structure,
     include_binary,
+    display_warnings,
 ):
     # Reset global variables
     global global_index, total_length, dir_lengths
@@ -310,6 +330,7 @@ def cli(
             claude_xml,
             root_path=path,
             include_binary=include_binary,
+            display_warnings=display_warnings,
         )
     if claude_xml:
         writer("</documents>")

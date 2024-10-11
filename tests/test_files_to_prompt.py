@@ -113,6 +113,35 @@ def test_ignore_patterns(tmpdir):
         assert "This file should be included" in result.output
 
 
+def test_ignore_folders(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir/ignore_this_folder")
+        os.makedirs("test_dir/include_this_folder")
+
+        with open("test_dir/ignore_this_folder/file1.txt", "w") as f:
+            f.write("This file is in a folder that should be ignored")
+        with open("test_dir/include_this_folder/file2.txt", "w") as f:
+            f.write("This file is in a folder that should be included")
+
+        result = runner.invoke(
+            cli,
+            [
+                "test_dir",
+                "--ignore",
+                "--display-warning",
+                "--ignore",
+                "ignore_this_folder",
+            ],
+        )
+        output = remove_tmpdir(result.output, tmpdir)
+        assert result.exit_code == 0
+        assert "test_dir/ignore_this_folder/file1.txt" not in output
+        assert "This file is in a folder that should be ignored" not in output
+        assert "test_dir/include_this_folder/file2.txt" in output
+        assert "This file is in a folder that should be included" in output
+
+
 def test_mixed_paths_with_options(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
@@ -184,7 +213,7 @@ def test_include_binary(tmpdir):
             f.write("This is a text file")
 
         # Run without --include-binary; binary files should be skipped
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir", "--display-warning"])
         assert result.exit_code == 0
         stdout = result.stdout
         stderr = result.stderr
@@ -245,7 +274,7 @@ def test_binary_file_warning(tmpdir):
         with open("test_dir/text_file.txt", "w") as f:
             f.write("This is a text file")
 
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir", "--display-warning"])
         assert result.exit_code == 0
 
         stdout = result.stdout

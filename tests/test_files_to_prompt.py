@@ -131,7 +131,7 @@ def test_ignore_folders(tmpdir):
                 "--ignore",
                 "--display-warning",
                 "--ignore",
-                "ignore_this_folder",
+                "/ignore_this_folder/*",
             ],
         )
         output = remove_tmpdir(result.output, tmpdir)

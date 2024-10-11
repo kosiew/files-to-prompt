@@ -174,13 +174,17 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
-                if is_text_file(file_path) or include_binary:
-                    process_file(
-                        file_path, writer, claude_xml, root_path, ignore_patterns
-                    )
-                else:
-                    warning_message = f"Warning: Skipping non-text file {file_path}"
-                    click.echo(click.style(warning_message, fg="yellow"), err=True)
+                process_path(
+                    file_path,
+                    include_hidden,
+                    ignore_gitignore,
+                    gitignore_rules,
+                    ignore_patterns,
+                    writer,
+                    claude_xml,
+                    root_path,
+                    include_binary,
+                )
 
 
 def print_directory_structure(dir_lengths, writer, root_paths):

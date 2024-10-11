@@ -113,9 +113,12 @@ def process_path(
     claude_xml,
     root_path,
     include_binary,
-    display_warnings,
+    display_warning,
+    warnings=None,
+    is_top_level=True,
 ):
-    warnings = []
+    if warnings is None:
+        warnings = []
 
     # Default patterns to ignore image and PDF files
     default_ignore_patterns = [
@@ -148,7 +151,7 @@ def process_path(
             process_file(path, writer, claude_xml, root_path, ignore_patterns)
         else:
             warning_message = f"Warning: Skipping non-text file {path}"
-            if display_warnings:
+            if display_warning:
                 click.echo(click.style(warning_message, fg="yellow"), err=True)
             else:
                 warnings.append(warning_message)
@@ -190,10 +193,12 @@ def process_path(
                     claude_xml,
                     root_path,
                     include_binary,
-                    display_warnings,
+                    display_warning,
+                    warnings,
+                    is_top_level=False,
                 )
 
-    if not display_warnings and warnings:
+    if is_top_level and warnings and not display_warning:
         click.echo(
             click.style(f"Suppressed {len(warnings)} warnings:", fg="yellow"), err=True
         )
@@ -293,7 +298,7 @@ def cli(
     claude_xml,
     print_dir_structure,
     include_binary,
-    display_warnings,
+    display_warning,
 ):
     # Reset global variables
     global global_index, total_length, dir_lengths
@@ -330,7 +335,7 @@ def cli(
             claude_xml,
             root_path=path,
             include_binary=include_binary,
-            display_warnings=display_warnings,
+            display_warning=display_warning,
         )
     if claude_xml:
         writer("</documents>")
